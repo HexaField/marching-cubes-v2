@@ -1,7 +1,7 @@
-import { CHUNK_HEIGHT, CHUNK_SIZE } from "./constants";
-import { generateNoiseMap } from "./noiseMapGenerator";
-import { LoadedChunks, NoiseLayers, NoiseMap, Seed } from "./types";
-import { getChunkKey } from "./utils";
+import { CHUNK_HEIGHT, CHUNK_SIZE } from "./lib/constants";
+import { generateNoiseMap } from "./lib/noiseMapGenerator";
+import { LoadedChunks, NoiseLayers, NoiseMap, Seed } from "./lib/types";
+import { getChunkKey } from "./lib/utils";
 
 export function editNoiseMapChunks(
   loadedChunks: LoadedChunks,
@@ -152,24 +152,32 @@ export function editNoiseMapChunks(
   let editChunks = [];
   try {
     if (noiseMapX) {
-      loadedChunks[getChunkKey(chunkX + chunkXOffset, chunkZ)].noiseMap =
-        noiseMapX;
-      editChunks.push([chunkX + chunkXOffset, chunkZ]);
+      const chunk = loadedChunks[getChunkKey(chunkX + chunkXOffset, chunkZ)];
+      if (chunk) {
+        chunk.noiseMap = noiseMapX;
+        editChunks.push([chunkX + chunkXOffset, chunkZ]);
+      }
     }
     if (noiseMapZ) {
-      loadedChunks[getChunkKey(chunkX, chunkZ + chunkZOffset)].noiseMap =
-        noiseMapZ;
-      editChunks.push([chunkX, chunkZ + chunkZOffset]);
+      const chunk = loadedChunks[getChunkKey(chunkX, chunkZ + chunkZOffset)];
+      if (chunk) {
+        chunk.noiseMap = noiseMapZ;
+        editChunks.push([chunkX, chunkZ + chunkZOffset]);
+      }
     }
     if (noiseMapXZ) {
-      loadedChunks[
-        getChunkKey(chunkX + chunkXOffset, chunkZ + chunkZOffset)
-      ].noiseMap = noiseMapXZ;
-      editChunks.push([chunkX + chunkXOffset, chunkZ + chunkZOffset]);
+      const chunk = loadedChunks[getChunkKey(chunkX + chunkXOffset, chunkZ + chunkZOffset)];
+      if (chunk) {
+        chunk.noiseMap = noiseMapXZ;
+        editChunks.push([chunkX + chunkXOffset, chunkZ + chunkZOffset]);
+      }
     }
 
-    loadedChunks[getChunkKey(chunkX, chunkZ)].noiseMap = noiseMap;
-    editChunks.push([chunkX, chunkZ]);
+    const chunk = loadedChunks[getChunkKey(chunkX, chunkZ)];
+    if (chunk) {
+      chunk.noiseMap = noiseMap;
+      editChunks.push([chunkX, chunkZ]);
+    }
   } catch (e) {
     console.error(e);
   }

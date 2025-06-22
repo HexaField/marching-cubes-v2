@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { mergeBufferGeometries } from "three/examples/jsm/utils/BufferGeometryUtils";
-import { CHUNK_HEIGHT, CHUNK_SIZE, storageKeys } from "./constants";
-import { generateNoiseMap } from "./noiseMapGenerator";
+import { CHUNK_SIZE, storageKeys } from "./constants";
 import { edgeCorners, edges, table } from "./triangulation";
 import { Generate } from "./types";
 
@@ -11,54 +10,42 @@ export function generateMesh(
   chunkX: number,
   chunkY: number,
   chunkZ: number,
-  generate?: Generate | null,
+  generate?: Generate,
   interpolate?: boolean,
-  wireframe?: boolean
+  wireframe?: boolean,
+  levelOfDetail = 0
 ) {
   let geoms = [];
 
-  let noiseMap = generate?.noiseMap;
-  if (!noiseMap) {
-    if (generate?.noiseLayers) {
-      noiseMap = generateNoiseMap(
-        chunkX,
-        chunkY,
-        chunkZ,
-        generate.noiseLayers,
-        generate.seed
-      );
-    } else {
-      noiseMap = generateNoiseMap(chunkX, chunkY, chunkZ, null, generate?.seed);
-    }
-  }
+  let noiseMap = generate!.noiseMap!;
 
   if (interpolate === undefined)
     interpolate = sessionStorage.getItem(storageKeys.INTERPOLATE) === "true";
   if (wireframe === undefined)
     wireframe = sessionStorage.getItem(storageKeys.WIREFRAME) === "true";
 
+  const quality = Math.pow(2, levelOfDetail);
+  console.log({ quality, levelOfDetail });
+
   // Create cube based on noise map
   let cubeCounter = 0;
-  let y = 0;
-  while (y < CHUNK_HEIGHT) {
-    let z = 0;
-    while (z < CHUNK_SIZE) {
-      let x = 0;
-      while (x < CHUNK_SIZE) {
+  for (let x = 0; x < CHUNK_SIZE; x += quality) {
+    for (let y = 0; y < CHUNK_SIZE; y += quality) {
+      for (let z = 0; z < CHUNK_SIZE; z += quality) {
         let cubeIndex = 0;
         const noiseMapYBot = noiseMap[y];
-        const noiseMapYTop = noiseMap[y + 1];
+        const noiseMapYTop = noiseMap[y + quality];
 
         // Get noise value of each corner of the cube
         let cornerNoises = [
           noiseMapYBot[z][x],
-          noiseMapYBot[z][x + 1],
-          noiseMapYBot[z + 1][x + 1],
-          noiseMapYBot[z + 1][x],
+          noiseMapYBot[z][x + quality],
+          noiseMapYBot[z + quality][x + quality],
+          noiseMapYBot[z + quality][x],
           noiseMapYTop[z][x],
-          noiseMapYTop[z][x + 1],
-          noiseMapYTop[z + 1][x + 1],
-          noiseMapYTop[z + 1][x],
+          noiseMapYTop[z][x + quality],
+          noiseMapYTop[z + quality][x + quality],
+          noiseMapYTop[z + quality][x],
         ];
 
         // Calculate cube index based on corner noises
@@ -132,34 +119,21 @@ export function generateMesh(
               ]);
             }
 
-            const xOffset =
-              (cubeCounter % CHUNK_SIZE) + (chunkX - 0.5) * CHUNK_SIZE;
-            const yOffset =
-              Math.floor(cubeCounter / (CHUNK_SIZE * CHUNK_SIZE)) -
-              chunkY * CHUNK_HEIGHT;
-            const zOffset =
-              Math.floor(
-                (cubeCounter % (CHUNK_SIZE * CHUNK_SIZE)) / CHUNK_SIZE
-              ) +
-              (chunkZ - 0.5) * CHUNK_SIZE;
-
             // Create surface from vertices
             geom.setAttribute(
               "position",
               new THREE.BufferAttribute(vertices, 3)
             );
-            geom.translate(xOffset, yOffset, zOffset);
+            geom.scale(quality, quality, quality);
+            geom.translate(x, y, z);
             geoms.push(geom);
 
             e += 3;
           }
         }
         cubeCounter++;
-        x++;
       }
-      z++;
     }
-    y++;
   }
 
   // Merge chunk

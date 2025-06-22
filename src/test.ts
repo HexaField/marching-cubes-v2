@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { disposeNode } from "./disposeNode";
+import { CHUNK_SIZE } from "./lib/constants";
 import { generateMesh } from "./lib/meshGenerator";
 import { generateNoiseMap } from "./lib/noiseMapGenerator";
 import { LoadedChunks, NoiseLayers } from "./lib/types";
@@ -40,12 +41,12 @@ scene.add(ambientLight);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target = new THREE.Vector3(0, 0, 0);
-controls.autoRotate = true;
 controls.update();
+controls.zoomSpeed = 0.1;
 
 /* ============ MESH GENERATOR ============ */
 
-const MAP_SIZE = 2;
+const MAP_SIZE = 8;
 
 let loadedChunks: LoadedChunks = {};
 
@@ -56,21 +57,21 @@ let noiseLayers: NoiseLayers = [50, 25, 10];
 function generateMap() {
   for (let z = -MAP_SIZE / 2; z <= MAP_SIZE / 2; z++) {
     for (let x = -MAP_SIZE / 2; x <= MAP_SIZE / 2; x++) {
-      if (getChunkKey(x, z) in loadedChunks) {
-        loadedChunks[getChunkKey(x, z)].noiseMap = generateNoiseMap(
-          x,
-          0,
-          z,
-          noiseLayers,
-          seed,
-          false
-        );
-      } else {
-        loadedChunks[getChunkKey(x, z)] = {
-          noiseMap: generateNoiseMap(x, 0, z, noiseLayers, seed, false),
-          mesh: null,
-        };
-      }
+      // if (getChunkKey(x, z) in loadedChunks) {
+      //   loadedChunks[getChunkKey(x, z)].noiseMap = generateNoiseMap(
+      //     x,
+      //     0,
+      //     z,
+      //     noiseLayers,
+      //     seed,
+      //     false
+      //   );
+      // } else {
+      loadedChunks[getChunkKey(x, z)] = {
+        noiseMap: generateNoiseMap(x, 0, z, noiseLayers, seed, false),
+        mesh: null,
+      };
+      // }
     }
   }
 
@@ -82,7 +83,17 @@ function generateMap() {
         disposeNode(scene, oldMesh);
       }
 
-      const mesh = generateMesh(x, 0, z, { noiseMap }, true, false);
+      const levelOfDetail = Math.floor(Math.sqrt(x ** 2 + z ** 2) / 2);
+      const mesh = generateMesh(
+        x,
+        0,
+        z,
+        { noiseMap },
+        true,
+        false,
+        levelOfDetail
+      );
+      mesh.position.set(x * CHUNK_SIZE, 0 * CHUNK_SIZE, z * CHUNK_SIZE);
       loadedChunks[getChunkKey(x, z)].mesh = mesh;
       scene.add(mesh);
     }

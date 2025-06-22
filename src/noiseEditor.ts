@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { generateMesh } from "./meshGenerator";
-import { DEFAULT_NOISE_LAYERS, storageKeys } from "./constants";
+import { generateMesh } from "./lib/meshGenerator";
+import { DEFAULT_NOISE_LAYERS, storageKeys } from "./lib/constants";
 import { disposeNode } from "./disposeNode";
-import { generateNoiseMap } from "./noiseMapGenerator";
-import { LoadedChunks, NoiseLayers } from "./types";
-import { getChunkKey, getSeed } from "./utils";
+import { generateNoiseMap } from "./lib/noiseMapGenerator";
+import { LoadedChunks, NoiseLayers } from "./lib/types";
+import { getChunkKey, getSeed } from "./lib/utils";
 
 /* ============ VARIABLES ============ */
 

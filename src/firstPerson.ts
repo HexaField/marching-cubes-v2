@@ -1,19 +1,19 @@
 import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls";
-import { generateMesh } from "./meshGenerator";
-import { CHUNK_SIZE, storageKeys } from "./constants";
+import { generateMesh } from "./lib/meshGenerator";
+import { CHUNK_SIZE, storageKeys } from "./lib/constants";
 import { disposeNode } from "./disposeNode";
 import { editNoiseMapChunks } from "./noiseMapEditor";
 import {
   LoadedChunks,
   NoiseLayers,
-  UpdateController,
   WorkerReturnMessage,
-} from "./types";
-import { getChunkKey, getSeed } from "./utils";
+} from "./lib/types";
+import { getChunkKey, getSeed } from "./lib/utils";
 import { mobileController } from "./mobileController";
 import Worker from "web-worker";
 import Stats from "stats.js";
+import { UpdateController } from "./types";
 
 /* ============ VARIABLES ============ */
 
