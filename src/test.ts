@@ -1,10 +1,11 @@
 import * as THREE from "three";
+import { Vector2, Vector3 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { disposeNode } from "./disposeNode";
 import { CHUNK_SIZE } from "./lib/constants";
 import { generateMesh } from "./lib/meshGenerator";
 import { generateNoiseMap } from "./lib/noiseMapGenerator";
-import { LoadedChunks, NoiseLayers } from "./lib/types";
+import { LoadedChunks, NoiseLayers, WorkerReturnMessage } from "./lib/types";
 import { getChunkKey } from "./lib/utils";
 
 /* ============ SETUP ============ */
@@ -24,7 +25,7 @@ const camera = new THREE.PerspectiveCamera(
   70,
   window.innerWidth / window.innerHeight,
   1,
-  1000
+  10000
 );
 camera.position.y = 90;
 camera.position.x = 60;
@@ -42,11 +43,11 @@ scene.add(ambientLight);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target = new THREE.Vector3(0, 0, 0);
 controls.update();
-controls.zoomSpeed = 0.1;
+controls.zoomSpeed = 0.4;
 
 /* ============ MESH GENERATOR ============ */
 
-const MAP_SIZE = 8;
+const MAP_SIZE = 16;
 
 let loadedChunks: LoadedChunks = {};
 
@@ -74,16 +75,38 @@ function generateMap() {
       // }
     }
   }
+}
 
+generateMap();
+
+function updateMap() {
   for (let z = -MAP_SIZE / 2; z <= MAP_SIZE / 2; z++) {
     for (let x = -MAP_SIZE / 2; x <= MAP_SIZE / 2; x++) {
-      const { mesh: oldMesh, noiseMap } = loadedChunks[getChunkKey(x, z)];
+      const chunk = loadedChunks[getChunkKey(x, z)];
+      if (!chunk) continue;
+
+      const { mesh: oldMesh, noiseMap, lastLod } = chunk;
+
+      const levelOfDetail = Math.max(
+        Math.min(
+          Math.floor(
+            Math.log10(
+              camera.position.distanceToSquared(
+                new Vector3(x * CHUNK_SIZE, 0 * CHUNK_SIZE, z * CHUNK_SIZE)
+              )
+            ) - 3
+          ),
+          4
+        ),
+        0
+      );
+
+      if (lastLod === levelOfDetail) continue;
 
       if (oldMesh) {
         disposeNode(scene, oldMesh);
       }
 
-      const levelOfDetail = Math.floor(Math.sqrt(x ** 2 + z ** 2) / 2);
       const mesh = generateMesh(
         x,
         0,
@@ -94,18 +117,19 @@ function generateMap() {
         levelOfDetail
       );
       mesh.position.set(x * CHUNK_SIZE, 0 * CHUNK_SIZE, z * CHUNK_SIZE);
-      loadedChunks[getChunkKey(x, z)].mesh = mesh;
+      chunk.mesh = mesh;
+      chunk.lastLod = levelOfDetail;
+
       scene.add(mesh);
     }
   }
 }
 
-generateMap();
-
 /* ============ ANIMATION ============ */
 
 function animation(_time: number) {
   controls.update();
+  updateMap();
   renderer.render(scene, camera);
 }
 

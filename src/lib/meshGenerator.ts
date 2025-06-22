@@ -25,7 +25,6 @@ export function generateMesh(
     wireframe = sessionStorage.getItem(storageKeys.WIREFRAME) === "true";
 
   const quality = Math.pow(2, levelOfDetail);
-  console.log({ quality, levelOfDetail });
 
   // Create cube based on noise map
   let cubeCounter = 0;

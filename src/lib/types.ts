@@ -4,6 +4,7 @@ export type LoadedChunks = {
   [key: string]: {
     mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshNormalMaterial> | null;
     noiseMap: NoiseMap | null;
+    lastLod?: number
   };
 };
 

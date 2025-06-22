@@ -1,5 +1,6 @@
 import { NoiseLayers } from "./types";
 
+/** must be a multiple of 2, larger than the 2 ^ number of LOD levels */
 export const CHUNK_SIZE = 32;
 
 export const CHUNK_HEIGHT = 32;
