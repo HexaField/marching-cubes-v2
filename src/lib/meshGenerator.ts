@@ -1,30 +1,86 @@
-import * as THREE from "three";
+import {
+  BufferAttribute,
+  BufferGeometry,
+  DoubleSide,
+  Mesh,
+  MeshNormalMaterial,
+} from "three";
 import { mergeBufferGeometries } from "three/examples/jsm/utils/BufferGeometryUtils";
 import { CHUNK_SIZE, storageKeys } from "./constants";
 import { edgeCorners, edges, table } from "./triangulation";
-import { Generate } from "./types";
+import { Generate, NoiseMap } from "./types";
 
 const SURFACE_LEVEL = 0;
 
-export function generateMesh(
-  chunkX: number,
-  chunkY: number,
-  chunkZ: number,
-  generate?: Generate,
-  interpolate?: boolean,
-  wireframe?: boolean,
-  levelOfDetail = 0
+function createTriangle(
+  offset: number,
+  vertices: Float32Array,
+  tableEdges: number[],
+  cornerNoises: number[],
+  interpolate: boolean
 ) {
-  let geoms = [];
+  // Vectors of edges
+  const edge1 = edges[tableEdges[offset]];
+  const edge2 = edges[tableEdges[offset + 1]];
+  const edge3 = edges[tableEdges[offset + 2]];
 
-  let noiseMap = generate!.noiseMap!;
+  if (interpolate) {
+    // Id of corners that make up the edges
+    const edgeCorners1 = edgeCorners[tableEdges[offset]];
+    const edgeCorners2 = edgeCorners[tableEdges[offset + 1]];
+    const edgeCorners3 = edgeCorners[tableEdges[offset + 2]];
 
-  if (interpolate === undefined)
-    interpolate = sessionStorage.getItem(storageKeys.INTERPOLATE) === "true";
-  if (wireframe === undefined)
-    wireframe = sessionStorage.getItem(storageKeys.WIREFRAME) === "true";
+    // Interpolate edges for smoother surface
+    let edgeInterpolate1 =
+      Math.abs(cornerNoises[edgeCorners1[0]] - SURFACE_LEVEL) /
+      Math.abs(cornerNoises[edgeCorners1[1]] - cornerNoises[edgeCorners1[0]]);
 
-  const quality = Math.pow(2, levelOfDetail);
+    let edgeInterpolate2 =
+      Math.abs(cornerNoises[edgeCorners2[0]] - SURFACE_LEVEL) /
+      Math.abs(cornerNoises[edgeCorners2[1]] - cornerNoises[edgeCorners2[0]]);
+
+    let edgeInterpolate3 =
+      Math.abs(cornerNoises[edgeCorners3[0]] - SURFACE_LEVEL) /
+      Math.abs(cornerNoises[edgeCorners3[1]] - cornerNoises[edgeCorners3[0]]);
+
+    vertices.set(
+      [
+        edge1[0] === 0.5 ? edgeInterpolate1 : edge1[0],
+        edge1[1] === 0.5 ? edgeInterpolate1 : edge1[1],
+        edge1[2] === 0.5 ? edgeInterpolate1 : edge1[2],
+        edge2[0] === 0.5 ? edgeInterpolate2 : edge2[0],
+        edge2[1] === 0.5 ? edgeInterpolate2 : edge2[1],
+        edge2[2] === 0.5 ? edgeInterpolate2 : edge2[2],
+        edge3[0] === 0.5 ? edgeInterpolate3 : edge3[0],
+        edge3[1] === 0.5 ? edgeInterpolate3 : edge3[1],
+        edge3[2] === 0.5 ? edgeInterpolate3 : edge3[2],
+      ],
+      offset * 9
+    );
+  } else {
+    vertices.set(
+      [
+        edge1[0],
+        edge1[1],
+        edge1[2],
+        edge2[0],
+        edge2[1],
+        edge2[2],
+        edge3[0],
+        edge3[1],
+        edge3[2],
+      ],
+      offset * 9
+    );
+  }
+}
+
+export function triangulateChunkCells(
+  noiseMap: NoiseMap,
+  quality: number,
+  interpolate: boolean
+) {
+  const geoms = [] as BufferGeometry[];
 
   // Create cube based on noise map
   let cubeCounter = 0;
@@ -36,7 +92,7 @@ export function generateMesh(
         const noiseMapYTop = noiseMap[y + quality];
 
         // Get noise value of each corner of the cube
-        let cornerNoises = [
+        const cornerNoises = [
           noiseMapYBot[z][x],
           noiseMapYBot[z][x + quality],
           noiseMapYBot[z + quality][x + quality],
@@ -58,90 +114,57 @@ export function generateMesh(
           // Get edges from table based on cube index
           const tableEdges = table[cubeIndex];
 
-          let e = 0;
-          while (e < tableEdges.length) {
-            let geom = new THREE.BufferGeometry();
-            let vertices = new Float32Array(9);
+          const vertices = new Float32Array(tableEdges.length * 9);
 
-            // Vectors of edges
-            const edge1 = edges[tableEdges[e]];
-            const edge2 = edges[tableEdges[e + 1]];
-            const edge3 = edges[tableEdges[e + 2]];
-
-            if (interpolate) {
-              // Id of corners that make up the edges
-              const edgeCorners1 = edgeCorners[tableEdges[e]];
-              const edgeCorners2 = edgeCorners[tableEdges[e + 1]];
-              const edgeCorners3 = edgeCorners[tableEdges[e + 2]];
-
-              // Interpolate edges for smoother surface
-              let edgeInterpolate1 =
-                Math.abs(cornerNoises[edgeCorners1[0]] - SURFACE_LEVEL) /
-                Math.abs(
-                  cornerNoises[edgeCorners1[1]] - cornerNoises[edgeCorners1[0]]
-                );
-
-              let edgeInterpolate2 =
-                Math.abs(cornerNoises[edgeCorners2[0]] - SURFACE_LEVEL) /
-                Math.abs(
-                  cornerNoises[edgeCorners2[1]] - cornerNoises[edgeCorners2[0]]
-                );
-
-              let edgeInterpolate3 =
-                Math.abs(cornerNoises[edgeCorners3[0]] - SURFACE_LEVEL) /
-                Math.abs(
-                  cornerNoises[edgeCorners3[1]] - cornerNoises[edgeCorners3[0]]
-                );
-
-              vertices = new Float32Array([
-                edge1[0] === 0.5 ? edgeInterpolate1 : edge1[0],
-                edge1[1] === 0.5 ? edgeInterpolate1 : edge1[1],
-                edge1[2] === 0.5 ? edgeInterpolate1 : edge1[2],
-                edge2[0] === 0.5 ? edgeInterpolate2 : edge2[0],
-                edge2[1] === 0.5 ? edgeInterpolate2 : edge2[1],
-                edge2[2] === 0.5 ? edgeInterpolate2 : edge2[2],
-                edge3[0] === 0.5 ? edgeInterpolate3 : edge3[0],
-                edge3[1] === 0.5 ? edgeInterpolate3 : edge3[1],
-                edge3[2] === 0.5 ? edgeInterpolate3 : edge3[2],
-              ]);
-            } else {
-              vertices = new Float32Array([
-                edge1[0],
-                edge1[1],
-                edge1[2],
-                edge2[0],
-                edge2[1],
-                edge2[2],
-                edge3[0],
-                edge3[1],
-                edge3[2],
-              ]);
-            }
-
-            // Create surface from vertices
-            geom.setAttribute(
-              "position",
-              new THREE.BufferAttribute(vertices, 3)
-            );
-            geom.scale(quality, quality, quality);
-            geom.translate(x, y, z);
-            geoms.push(geom);
-
-            e += 3;
+          for (let i = 0; i < tableEdges.length; i += 3) {
+            createTriangle(i, vertices, tableEdges, cornerNoises, interpolate);
           }
+
+          if (vertices.every((v) => v === 0)) continue;
+
+          const geom = new BufferGeometry();
+
+          // Create surface from vertices
+          geom.setAttribute("position", new BufferAttribute(vertices, 3));
+          geom.scale(quality, quality, quality);
+          geom.translate(x, y, z);
+          geoms.push(geom);
         }
         cubeCounter++;
       }
     }
   }
 
-  // Merge chunk
-  let chunk = mergeBufferGeometries(geoms);
+  if (!geoms.length) return
+
+  const chunk = mergeBufferGeometries(geoms);
   chunk.computeVertexNormals();
-  let mesh = new THREE.Mesh(
-    chunk,
-    new THREE.MeshNormalMaterial({
-      side: THREE.DoubleSide,
+
+  return chunk;
+}
+
+export function generateMesh(
+  generate?: Generate,
+  interpolate?: boolean,
+  wireframe?: boolean,
+  levelOfDetail = 0
+) {
+  let densityField = generate!.noiseMap!;
+
+  if (interpolate === undefined)
+    interpolate = sessionStorage.getItem(storageKeys.INTERPOLATE) === "true";
+  if (wireframe === undefined)
+    wireframe = sessionStorage.getItem(storageKeys.WIREFRAME) === "true";
+
+  const quality = Math.pow(2, levelOfDetail);
+
+  const geoms = triangulateChunkCells(densityField, quality, interpolate);
+
+  // Merge chunk;
+  let mesh = new Mesh(
+    geoms,
+    new MeshNormalMaterial({
+      side: DoubleSide,
       wireframe: !!wireframe,
     })
   );

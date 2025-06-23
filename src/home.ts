@@ -82,7 +82,8 @@ function generateMap() {
         disposeNode(scene, oldMesh);
       }
 
-      const mesh = generateMesh(x, 0, z, { noiseMap }, true, false);
+      const mesh = generateMesh({ noiseMap }, true, false);
+      mesh.position.set(x, 0, z);
       loadedChunks[getChunkKey(x, z)].mesh = mesh;
       scene.add(mesh);
     }

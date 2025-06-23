@@ -133,7 +133,7 @@ function generateMap() {
         disposeNode(scene, oldMesh);
       }
 
-      const mesh = generateMesh(x, 0, z, { noiseMap }, interpolate, wireframe);
+      const mesh = generateMesh({ noiseMap }, interpolate, wireframe);
       loadedChunks[getChunkKey(x, z)].mesh = mesh;
       scene.add(mesh);
     }

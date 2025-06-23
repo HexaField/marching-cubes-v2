@@ -47,32 +47,34 @@ controls.zoomSpeed = 0.4;
 
 /* ============ MESH GENERATOR ============ */
 
-const MAP_SIZE = 16;
+const MAP_SIZE = 8;
 
 let loadedChunks: LoadedChunks = {};
 
-let seed = Math.random();
+let seed = 0.21368721387641278; //Math.random();
 
 let noiseLayers: NoiseLayers = [50, 25, 10];
 
 function generateMap() {
   for (let z = -MAP_SIZE / 2; z <= MAP_SIZE / 2; z++) {
-    for (let x = -MAP_SIZE / 2; x <= MAP_SIZE / 2; x++) {
-      // if (getChunkKey(x, z) in loadedChunks) {
-      //   loadedChunks[getChunkKey(x, z)].noiseMap = generateNoiseMap(
-      //     x,
-      //     0,
-      //     z,
-      //     noiseLayers,
-      //     seed,
-      //     false
-      //   );
-      // } else {
-      loadedChunks[getChunkKey(x, z)] = {
-        noiseMap: generateNoiseMap(x, 0, z, noiseLayers, seed, false),
-        mesh: null,
-      };
-      // }
+    for (let y = -MAP_SIZE / 2; y <= MAP_SIZE / 2; y++) {
+      for (let x = -MAP_SIZE / 2; x <= MAP_SIZE / 2; x++) {
+        // if (getChunkKey(x, z) in loadedChunks) {
+        //   loadedChunks[getChunkKey(x, z)].noiseMap = generateNoiseMap(
+        //     x,
+        //     0,
+        //     z,
+        //     noiseLayers,
+        //     seed,
+        //     false
+        //   );
+        // } else {
+        loadedChunks[getChunkKey(x, y, z)] = {
+          noiseMap: generateNoiseMap(x, y, z, noiseLayers, seed, false),
+          mesh: null,
+        };
+        // }
+      }
     }
   }
 }
@@ -81,46 +83,40 @@ generateMap();
 
 function updateMap() {
   for (let z = -MAP_SIZE / 2; z <= MAP_SIZE / 2; z++) {
-    for (let x = -MAP_SIZE / 2; x <= MAP_SIZE / 2; x++) {
-      const chunk = loadedChunks[getChunkKey(x, z)];
-      if (!chunk) continue;
+    for (let y = -MAP_SIZE / 2; y <= MAP_SIZE / 2; y++) {
+      for (let x = -MAP_SIZE / 2; x <= MAP_SIZE / 2; x++) {
+        const chunk = loadedChunks[getChunkKey(x, y, z)];
+        if (!chunk) continue;
 
-      const { mesh: oldMesh, noiseMap, lastLod } = chunk;
+        const { mesh: oldMesh, noiseMap, lastLod } = chunk;
 
-      const levelOfDetail = Math.max(
-        Math.min(
-          Math.floor(
-            Math.log10(
-              camera.position.distanceToSquared(
-                new Vector3(x * CHUNK_SIZE, 0 * CHUNK_SIZE, z * CHUNK_SIZE)
-              )
-            ) - 3
+        const levelOfDetail = Math.max(
+          Math.min(
+            Math.floor(
+              Math.log10(
+                camera.position.distanceToSquared(
+                  new Vector3(x * CHUNK_SIZE, y * CHUNK_SIZE, z * CHUNK_SIZE)
+                )
+              ) - 3
+            ),
+            4
           ),
-          4
-        ),
-        0
-      );
+          0
+        );
 
-      if (lastLod === levelOfDetail) continue;
+        if (lastLod === levelOfDetail) continue;
 
-      if (oldMesh) {
-        disposeNode(scene, oldMesh);
+        if (oldMesh) {
+          disposeNode(scene, oldMesh);
+        }
+
+        const mesh = generateMesh({ noiseMap }, true, false, levelOfDetail);
+        mesh.position.set(x * CHUNK_SIZE, y * CHUNK_SIZE, z * CHUNK_SIZE);
+        chunk.mesh = mesh;
+        chunk.lastLod = levelOfDetail;
+
+        scene.add(mesh);
       }
-
-      const mesh = generateMesh(
-        x,
-        0,
-        z,
-        { noiseMap },
-        true,
-        false,
-        levelOfDetail
-      );
-      mesh.position.set(x * CHUNK_SIZE, 0 * CHUNK_SIZE, z * CHUNK_SIZE);
-      chunk.mesh = mesh;
-      chunk.lastLod = levelOfDetail;
-
-      scene.add(mesh);
     }
   }
 }

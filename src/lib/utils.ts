@@ -1,7 +1,7 @@
 import { storageKeys } from "./constants";
 
-export function getChunkKey(chunkX: number, chunkZ: number) {
-  return `${chunkX},${chunkZ}`;
+export function getChunkKey(chunkX: number, chunkY: number, chunkZ: number) {
+  return `${chunkX},${chunkY},${chunkZ}`;
 }
 
 export function getSeed(): number {

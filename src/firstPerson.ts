@@ -166,10 +166,11 @@ for (let x = -1; x < 2; x++) {
   for (let z = -1; z < 2; z++) {
     let mesh = null;
     if (noiseLayers) {
-      mesh = generateMesh(x, 0, z, { noiseLayers, seed });
+      mesh = generateMesh({ noiseLayers, seed });
     } else {
-      mesh = generateMesh(x, 0, z, { seed });
+      mesh = generateMesh({ seed });
     }
+    mesh.position.set(x, 0, z);
     scene.add(mesh);
     loadedChunks[getChunkKey(x, z)] = { mesh, noiseMap: null };
   }
@@ -392,7 +393,8 @@ function editTerrain() {
         const { mesh: oldMesh, noiseMap } = loadedChunks[chunkKey];
 
         disposeNode(scene, oldMesh);
-        const mesh = generateMesh(chunk[0], 0, chunk[1], { noiseMap });
+        const mesh = generateMesh({ noiseMap });
+        mesh.position.set(chunk[0], 0, chunk[1])
         loadedChunks[chunkKey].mesh = mesh;
 
         scene.add(mesh);
